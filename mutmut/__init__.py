@@ -242,6 +242,7 @@ class Context(object):
         self.filename = filename
         self.exclude = exclude
         self.stack = []
+        self.path = []
         self.dict_synonyms = (dict_synonyms or []) + ['dict']
 
     def exclude_line(self):
@@ -251,7 +252,7 @@ class Context(object):
 @dispatch(
     context=Namespace(),
 )
-def mutate(source, mutate_index, context):
+def mutate(source, mutate_index, context, path_part=None):
     """
     :param source: source code
     :param mutate_index: the index of the mutation to be performed, if ALL mutates all available places
@@ -265,14 +266,14 @@ def mutate(source, mutate_index, context):
         raise
     context = Context(mutate_index=mutate_index, **context)
     context.pragma_no_mutate_lines = {i+1 for i, line in enumerate(source.split('\n')) if '# pragma: no mutate' in line}  # lines are 1 based indexed
-    mutate_list_of_nodes(result, context=context)
+    mutate_list_of_nodes(result, context=context, path_part=path_part)
     result_source = dumps(result).replace(' not not ', ' ')
     if context.performed_mutations:
         assert source != result_source
     return result_source, context.performed_mutations
 
 
-def mutate_node(i, context):
+def mutate_node(i, path_part, context):
     if not i:
         return
 
@@ -299,15 +300,15 @@ def mutate_node(i, context):
             context.index += 1
             return
 
-        for _, x in sorted(i.items()):
+        for inner_path_part, x in sorted(i.items()):
             if x is None:
                 continue  # pragma: no cover
 
             if isinstance(x, list):
                 if x:
-                    mutate_list_of_nodes(x, context=context)
+                    mutate_list_of_nodes(x, path_part=inner_path_part, context=context)
             elif isinstance(x, dict):
-                mutate_node(x, context=context)
+                mutate_node(x, path_part=inner_path_part, context=context)
             else:
                 assert isinstance(x, text_types + (bool,))
 
@@ -333,9 +334,11 @@ def mutate_node(i, context):
         context.stack.pop()
 
 
-def mutate_list_of_nodes(result, context):
-    for i in result:
-        mutate_node(i, context=context)
+def mutate_list_of_nodes(result, context, path_part):
+    context.path.append(path_part)
+
+    for i, node in enumerate(result):
+        mutate_node(node, path_part=i, context=context)
 
         if context.performed_mutations and context.mutate_index != ALL:
             return
@@ -356,6 +359,6 @@ def mutate_file(backup, mutation, filename, context):  # pragma: no cover
     if backup:
         open(filename + '.bak', 'w').write(code)
     context.filename = filename
-    result, mutations_performed = mutate(code, mutation, context=context)
+    result, mutations_performed = mutate(code, mutation, context=context, path_part=filename)
     open(filename, 'w').write(result)
     return mutations_performed
