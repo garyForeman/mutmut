@@ -201,6 +201,8 @@ def main(paths_to_mutate, apply, mutation, backup, runner, tests_dir, s, use_cov
                         print('\rFAILED (all tests skipped, uncovered line?): %s' % apply_line)
                     time_elapsed = (datetime.now() - start_time)
 
+                    # Killed mutant!
+
                 if time_elapsed > baseline_time_elapsed * 2:
                     print('\nSUSPICIOUS LONG TIME: %s > expected %s (%s)' % (time_elapsed, baseline_time_elapsed, apply_line))
                 os.remove(filename)
@@ -231,7 +233,7 @@ def python_source_files(path):
 def number_of_mutations(path):
     total = 0
     for filename in python_source_files(path):
-        _, c = mutate(open(filename).read(), ALL)
+        _, c, _ = mutate(open(filename).read(), ALL)
         total += c
     return total
 

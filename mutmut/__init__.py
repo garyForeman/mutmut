@@ -270,7 +270,7 @@ def mutate(source, mutate_index, context, path_part=None):
     result_source = dumps(result).replace(' not not ', ' ')
     if context.performed_mutations:
         assert source != result_source
-    return result_source, context.performed_mutations
+    return result_source, context.performed_mutations, context.path
 
 
 def mutate_node(i, path_part, context):
@@ -359,6 +359,6 @@ def mutate_file(backup, mutation, filename, context):  # pragma: no cover
     if backup:
         open(filename + '.bak', 'w').write(code)
     context.filename = filename
-    result, mutations_performed = mutate(code, mutation, context=context, path_part=filename)
+    result, mutations_performed, path = mutate(code, mutation, context=context, path_part=filename)
     open(filename, 'w').write(result)
-    return mutations_performed
+    return mutations_performed, path

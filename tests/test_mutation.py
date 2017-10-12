@@ -56,7 +56,7 @@ def test_basic_mutations(actual, expected):
 
 
 def test_mutate_all():
-    assert mutate('def foo():\n    return 1+1', ALL) == ('def foo():\n    return 2-2\n', 3)
+    assert mutate('def foo():\n    return 1+1', ALL)[:2] == ('def foo():\n    return 2-2\n', 3)
 
 
 def test_count_available_mutations():
@@ -64,33 +64,33 @@ def test_count_available_mutations():
 
 
 def test_perform_one_indexed_mutation():
-    assert mutate('1+1', mutate_index=0) == ('2+1', 1)
-    assert mutate('1+1', mutate_index=1) == ('1+2', 1)
-    assert mutate('1+1', mutate_index=2) == ('1-1', 1)
+    assert mutate('1+1', mutate_index=0)[0] == '2+1'
+    assert mutate('1+1', mutate_index=1)[0] == '1+2'
+    assert mutate('1+1', mutate_index=2)[0] == '1-1'
 
     # TODO: should this case raise an exception?
-    assert mutate('def foo():\n    return 1', mutate_index=2) == ('def foo():\n    return 1\n', 0)
+    assert mutate('def foo():\n    return 1', mutate_index=2)[0] == 'def foo():\n    return 1\n'
 
 
 def test_function():
-    assert mutate("def capitalize(s):\n    return s[0].upper() + s[1:] if s else s\n", mutate_index=0) == ("def capitalize(s):\n    return s[1].upper() + s[1:] if s else s\n", 1)
-    assert mutate("def capitalize(s):\n    return s[0].upper() + s[1:] if s else s\n", mutate_index=1) == (
-"def capitalize(s):\n    return s[0].upper() + s[2:] if s else s\n", 1)
+    assert mutate("def capitalize(s):\n    return s[0].upper() + s[1:] if s else s\n", mutate_index=0)[0] == "def capitalize(s):\n    return s[1].upper() + s[1:] if s else s\n"
+    assert mutate("def capitalize(s):\n    return s[0].upper() + s[1:] if s else s\n", mutate_index=1)[0] == "def capitalize(s):\n    return s[0].upper() + s[2:] if s else s\n"
 
 
 def test_pragma_no_mutate():
     source = """def foo():\n    return 1+1  # pragma: no mutate\n"""
-    assert mutate(source, ALL) == (source, 0)
+    assert mutate(source, ALL)[0] == source
+    assert mutate(source, ALL)[1] == 0
 
 
 def test_mutate_decorator():
     source = """@foo\ndef foo():\n    pass\n"""
-    assert mutate(source, ALL) == (source.replace('@foo', ''), 1)
+    assert mutate(source, ALL)[0] == source.replace('@foo', '')
 
 
 def test_mutate_dict():
     source = "dict(a=b, c=d)"
-    assert mutate(source, 1) == ("dict(a=b, cXX=d)", 1)
+    assert mutate(source, 1)[0] == "dict(a=b, cXX=d)"
 
 
 def test_mutation_index():
@@ -103,11 +103,11 @@ d = 4 - 1
     
     '''.strip()
     num_mutations = count_mutations(source=source)
-    mutants = [mutate(source=source, mutate_index=i) for i in range(num_mutations)]
+    mutants = [mutate(source=source, mutate_index=i)[0] for i in range(num_mutations)]
     assert len(mutants) == len(set(mutants))  # no two mutants should be the same
 
     # invalid mutation index should not mutate anything
-    mutated_source, count = mutate(source=source, mutate_index=num_mutations + 1)
+    mutated_source, count, path = mutate(source=source, mutate_index=num_mutations + 1)
     assert mutated_source.strip() == source
     assert count == 0
 
